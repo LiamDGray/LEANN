@@ -12,8 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from base_rag_example import BaseRAGExample
 from chunking import create_text_chunks
-
-from email_data.LEANN_email_reader import EmlxReader, EmlReader
+from email_data.LEANN_email_reader import EmlReader, EmlxReader
 
 
 class EmailRAG(BaseRAGExample):

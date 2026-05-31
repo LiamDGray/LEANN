@@ -1,28 +1,23 @@
 """Comprehensive tests for LEANN email readers (EmlReader, EmlxReader)."""
 
 import email
-import os
-import re
-import tempfile
+
+# ── Import path setup ─────────────────────────────────────
+# The email reader lives under apps/ — add it to sys.path
+import sys
 from email.header import Header
 from email.mime.application import MIMEApplication
-from email.mime.base import MIMEBase
 from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formatdate
 from pathlib import Path
 
-import pytest
-
-# ── Import path setup ─────────────────────────────────────
-# The email reader lives under apps/ — add it to sys.path
-import sys
 sys.path.insert(0, str(Path(__file__).parent.parent / "apps"))
 
-from email_data.LEANN_email_reader import (  # noqa: E402
-    EmlxReader,
+from email_data.LEANN_email_reader import (
     EmlReader,
+    EmlxReader,
     _build_email_document,
     _collect_attachments,
     _decode_addr,
@@ -34,15 +29,18 @@ from email_data.LEANN_email_reader import (  # noqa: E402
     _strip_html,
 )
 
-
 # ==========================================================
 # HELPERS — generate test .eml files
 # ==========================================================
 
-def _make_simple_text(subject: str = "Test Subject", body: str = "Hello world",
-                      from_addr: str = "alice@example.com",
-                      to_addr: str = "bob@example.com",
-                      date: str | None = None) -> str:
+
+def _make_simple_text(
+    subject: str = "Test Subject",
+    body: str = "Hello world",
+    from_addr: str = "alice@example.com",
+    to_addr: str = "bob@example.com",
+    date: str | None = None,
+) -> str:
     """Build a minimal text/plain .eml string."""
     msg = MIMEText(body)
     msg["Subject"] = subject
@@ -52,9 +50,13 @@ def _make_simple_text(subject: str = "Test Subject", body: str = "Hello world",
     return msg.as_string()
 
 
-def _make_multipart(subject: str, html_body: str = "",
-                    text_body: str = "", attachments: list | None = None,
-                    extra_headers: dict | None = None) -> str:
+def _make_multipart(
+    subject: str,
+    html_body: str = "",
+    text_body: str = "",
+    attachments: list | None = None,
+    extra_headers: dict | None = None,
+) -> str:
     """Build a multipart/mixed .eml string with optional text, HTML, attachments."""
     msg = MIMEMultipart("mixed")
     msg["Subject"] = subject
@@ -91,6 +93,7 @@ def _write_eml(dir_path: str, filename: str, content: str) -> str:
 # TESTS: _payload_to_text
 # ==========================================================
 
+
 class TestPayloadToText:
     def test_bytes_input(self):
         assert _payload_to_text(b"hello bytes") == "hello bytes"
@@ -102,7 +105,7 @@ class TestPayloadToText:
         assert _payload_to_text(b"\x00\x00") == "\x00\x00"
 
     def test_utf8_bytes(self):
-        assert _payload_to_text("café".encode("utf-8")) == "café"
+        assert _payload_to_text("café".encode()) == "café"
 
     def test_non_text_type(self):
         assert _payload_to_text(42) == ""
@@ -113,6 +116,7 @@ class TestPayloadToText:
 # ==========================================================
 # TESTS: _strip_html
 # ==========================================================
+
 
 class TestStripHtml:
     def test_simple_tags(self):
@@ -148,6 +152,7 @@ class TestStripHtml:
 # ==========================================================
 # TESTS: _decode_subject
 # ==========================================================
+
 
 class TestDecodeSubject:
     def test_plain_subject(self):
@@ -191,6 +196,7 @@ class TestDecodeSubject:
 # TESTS: _decode_addr
 # ==========================================================
 
+
 class TestDecodeAddr:
     def test_plain_addr(self):
         assert _decode_addr("alice@example.com") == "alice@example.com"
@@ -215,6 +221,7 @@ class TestDecodeAddr:
 # ==========================================================
 # TESTS: _split_quoted_thread
 # ==========================================================
+
 
 class TestSplitQuotedThread:
     def test_no_separator(self):
@@ -308,6 +315,7 @@ class TestSplitQuotedThread:
 # TESTS: _extract_rtf_text
 # ==========================================================
 
+
 class TestExtractRtfText:
     def test_rtf_with_htmlrtf0_markers(self):
         """Method 1: Exchange-style \\htmlrtf0 markers — text must exceed 50-char quality gate."""
@@ -365,6 +373,7 @@ class TestExtractRtfText:
 # TESTS: _extract_attachment_text
 # ==========================================================
 
+
 class TestExtractAttachmentText:
     def test_txt_attachment(self):
         result = _extract_attachment_text("notes.txt", b"Hello from text")
@@ -410,7 +419,9 @@ class TestExtractAttachmentText:
     def test_docx_attachment_python_docx(self):
         """Test with a minimal .docx that python-docx can parse."""
         import io
+
         from docx import Document
+
         doc = Document()
         doc.add_paragraph("Hello from Word")
         buf = io.BytesIO()
@@ -422,7 +433,9 @@ class TestExtractAttachmentText:
     def test_docm_ext(self):
         """.docm extension behaves same as .docx."""
         import io
+
         from docx import Document
+
         doc = Document()
         doc.add_paragraph("Docm content")
         buf = io.BytesIO()
@@ -456,6 +469,7 @@ class TestExtractAttachmentText:
 # ==========================================================
 # TESTS: _collect_attachments
 # ==========================================================
+
 
 class TestCollectAttachments:
     def test_no_attachments(self):
@@ -528,6 +542,7 @@ class TestCollectAttachments:
 # TESTS: _build_email_document
 # ==========================================================
 
+
 class TestBuildEmailDocument:
     def test_simple_text_email(self):
         msg = email.message_from_string(_make_simple_text())
@@ -555,10 +570,14 @@ class TestBuildEmailDocument:
 
     def test_html_email_with_include_html(self):
         msg = email.message_from_string(
-            _make_simple_text(subject="HTML Email", body="<html><body><p>Hello HTML</p></body></html>")
+            _make_simple_text(
+                subject="HTML Email", body="<html><body><p>Hello HTML</p></body></html>"
+            )
         )
         # Override content type
-        msg_str = _make_simple_text(subject="HTML Email", body="<html><body><p>Hello HTML</p></body></html>")
+        msg_str = _make_simple_text(
+            subject="HTML Email", body="<html><body><p>Hello HTML</p></body></html>"
+        )
         msg = email.message_from_string(msg_str)
         msg.replace_header("Content-Type", "text/html")
 
@@ -568,7 +587,9 @@ class TestBuildEmailDocument:
         assert "<p>" not in doc.text
 
     def test_html_email_without_include_html(self):
-        msg_str = _make_simple_text(subject="HTML Email", body="<html><body><p>Hidden</p></body></html>")
+        msg_str = _make_simple_text(
+            subject="HTML Email", body="<html><body><p>Hidden</p></body></html>"
+        )
         msg = email.message_from_string(msg_str)
         msg.replace_header("Content-Type", "text/html")
         doc = _build_email_document("hidden.eml", msg, include_html=False)
@@ -648,10 +669,10 @@ class TestBuildEmailDocument:
 
     def test_calendar_invite(self):
         """Calendar invites have no body — should produce a document with metadata."""
-        cal_body = "BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nSUMMARY:Meeting\nEND:VEVENT\nEND:VCALENDAR"
-        msg = email.message_from_string(
-            _make_simple_text(subject="Meeting Invite", body=cal_body)
+        cal_body = (
+            "BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nSUMMARY:Meeting\nEND:VEVENT\nEND:VCALENDAR"
         )
+        msg = email.message_from_string(_make_simple_text(subject="Meeting Invite", body=cal_body))
         msg.replace_header("Content-Type", "text/calendar; method=REQUEST")
         doc = _build_email_document("invite.eml", msg)
         # Body exists (calendar text) so document is created
@@ -661,9 +682,7 @@ class TestBuildEmailDocument:
     def test_attachment_metadata_in_doc(self):
         att = MIMEApplication(b"Important info", _subtype="octet-stream")
         att.add_header("Content-Disposition", "attachment", filename="notes.txt")
-        msg_str = _make_multipart(
-            "With att", text_body="Body text", attachments=[att]
-        )
+        msg_str = _make_multipart("With att", text_body="Body text", attachments=[att])
         msg = email.message_from_string(msg_str)
         doc = _build_email_document("attached.eml", msg)
         assert doc is not None
@@ -673,9 +692,7 @@ class TestBuildEmailDocument:
 
     def test_encoded_subject(self):
         encoded_subj = str(Header("Re: über important", "utf-8"))
-        msg = email.message_from_string(
-            _make_simple_text(subject=encoded_subj, body="Got it.")
-        )
+        msg = email.message_from_string(_make_simple_text(subject=encoded_subj, body="Got it."))
         doc = _build_email_document("encoded.eml", msg)
         assert doc is not None
         assert "über important" in doc.text
@@ -690,8 +707,7 @@ class TestBuildEmailDocument:
     def test_cc_header_appears_in_body_only(self):
         """Cc doesn't create a [Cc] field, but any content is fine."""
         msg_str = _make_simple_text(
-            subject="With CC", body="Hello",
-            from_addr="alice@a.com", to_addr="bob@b.com"
+            subject="With CC", body="Hello", from_addr="alice@a.com", to_addr="bob@b.com"
         )
         msg = email.message_from_string(msg_str)
         msg["Cc"] = "carol@c.com"
@@ -703,6 +719,7 @@ class TestBuildEmailDocument:
 # ==========================================================
 # TESTS: EmlReader (integration with temp files)
 # ==========================================================
+
 
 class TestEmlReader:
     def test_read_single_eml(self, tmp_path: Path):
@@ -779,7 +796,9 @@ class TestEmlReader:
 
     def test_include_html_parameter(self, tmp_path: Path):
         """HTML-only .eml is empty body when include_html=False, has body when True."""
-        msg_str = _make_simple_text(subject="HTML Only", body="<html><body><p>HTML content</p></body></html>")
+        msg_str = _make_simple_text(
+            subject="HTML Only", body="<html><body><p>HTML content</p></body></html>"
+        )
         msg = email.message_from_string(msg_str)
         msg.replace_header("Content-Type", "text/html")
         _write_eml(str(tmp_path), "html_only.eml", msg.as_string())
@@ -799,9 +818,7 @@ class TestEmlReader:
         """Test that attachments are actually extracted during full EmlReader run."""
         att = MIMEApplication(b"Attachment text here!", _subtype="octet-stream")
         att.add_header("Content-Disposition", "attachment", filename="content.txt")
-        msg_str = _make_multipart(
-            "With attachment", text_body="Main body", attachments=[att]
-        )
+        msg_str = _make_multipart("With attachment", text_body="Main body", attachments=[att])
         _write_eml(str(tmp_path), "attachments.eml", msg_str)
         reader = EmlReader()
         docs = reader.load_data(str(tmp_path), max_count=10)
@@ -814,6 +831,7 @@ class TestEmlReader:
 # ==========================================================
 # TESTS: EmlxReader
 # ==========================================================
+
 
 class TestEmlxReader:
     def test_emlx_format_with_length_prefix(self, tmp_path: Path):
@@ -854,9 +872,7 @@ class TestEmlxReader:
         """Attachment extraction works through EmlxReader."""
         att = MIMEApplication(b"Emlx attachment data", _subtype="octet-stream")
         att.add_header("Content-Disposition", "attachment", filename="info.txt")
-        msg_str = _make_multipart(
-            "Emlx with att", text_body="Main", attachments=[att]
-        )
+        msg_str = _make_multipart("Emlx with att", text_body="Main", attachments=[att])
         length = len(msg_str.encode("utf-8"))
         emlx_content = f"{length}\n{msg_str}"
         (tmp_path / "att.emlx").write_text(emlx_content, encoding="utf-8")
@@ -870,6 +886,7 @@ class TestEmlxReader:
 # ==========================================================
 # TESTS: Edge Cases & Error Handling
 # ==========================================================
+
 
 class TestEdgeCases:
     def test_very_long_subject(self, tmp_path: Path):
@@ -894,13 +911,10 @@ class TestEdgeCases:
     def test_multiple_attachments_various_types(self, tmp_path: Path):
         att1 = MIMEApplication(b"Text content", _subtype="octet-stream")
         att1.add_header("Content-Disposition", "attachment", filename="readme.txt")
-        att2 = MIMEApplication(
-            b"{\\rtf1\\ansi RTF Content}", _subtype="octet-stream"
-        )
+        att2 = MIMEApplication(b"{\\rtf1\\ansi RTF Content}", _subtype="octet-stream")
         att2.add_header("Content-Disposition", "attachment", filename="formatted.rtf")
         msg_str = _make_multipart(
-            "Multiple attachments", text_body="Body",
-            attachments=[att1, att2]
+            "Multiple attachments", text_body="Body", attachments=[att1, att2]
         )
         _write_eml(str(tmp_path), "multi_att.eml", msg_str)
         reader = EmlReader()
@@ -915,7 +929,7 @@ class TestEdgeCases:
         """EmlReader should only read .eml, EmlxReader only .emlx."""
         # Create both
         _write_eml(str(tmp_path), "note.eml", _make_simple_text(subject="Eml file"))
-        emlx_content = f"{len('hi'.encode())}\n{_make_simple_text(subject='Emlx file')}"
+        emlx_content = f"{len(b'hi')}\n{_make_simple_text(subject='Emlx file')}"
         (tmp_path / "note.emlx").write_text(emlx_content, encoding="utf-8")
 
         eml_reader = EmlReader()
@@ -939,9 +953,7 @@ class TestEdgeCases:
 
     def test_no_to_header(self):
         """Email with only From and no To."""
-        msg_str = _make_simple_text(
-            from_addr="alice@example.com", to_addr=""
-        )
+        msg_str = _make_simple_text(from_addr="alice@example.com", to_addr="")
         msg = email.message_from_string(msg_str)
         doc = _build_email_document("noto.eml", msg)
         assert doc is not None
@@ -985,7 +997,6 @@ class TestEdgeCases:
 
     def test_zero_length_body_with_subject(self, tmp_path: Path):
         """Email with subject but empty body — should still produce doc."""
-        msg_str = _make_simple_text(subject="Empty Body", body="")
         # Force the body to be truly empty
         msg = email.message_from_string(
             "Subject: Empty Body\nFrom: a@a.com\nTo: b@b.com\nDate: Wed, 1 Jan 2024\n\n"
@@ -1020,9 +1031,7 @@ class TestEdgeCases:
         """Binary attachments with no text extraction should not crash."""
         att = MIMEApplication(b"\x00\x01\x02\x03\xff\xfe\xfd", _subtype="octet-stream")
         att.add_header("Content-Disposition", "attachment", filename="binary.bin")
-        msg_str = _make_multipart(
-            "Binary att", text_body="Text body", attachments=[att]
-        )
+        msg_str = _make_multipart("Binary att", text_body="Text body", attachments=[att])
         _write_eml(str(tmp_path), "binary.eml", msg_str)
         reader = EmlReader()
         docs = reader.load_data(str(tmp_path), max_count=10)
